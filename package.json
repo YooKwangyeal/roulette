@@ -13,9 +13,9 @@
   },
   "scripts": {
     "lint": "biome check --fix src/",
-    "dev": "parcel index.html --port 1235",
-    "build": "parcel build index.html --public-url /roulette/ && node scripts/build-sw.js",
-    "build:discord": "parcel build index.html --dist-dir dist-discord --public-url /",
+    "dev": "node scripts/gen-env.js && parcel index.html --port 1235",
+    "build": "node scripts/gen-env.js && parcel build index.html --public-url /roulette/ && node scripts/build-sw.js",
+    "build:discord": "node scripts/gen-env.js && parcel build index.html --dist-dir dist-discord --public-url /",
     "simulate": "tsx scripts/simulate.ts"
   },
   "dependencies": {

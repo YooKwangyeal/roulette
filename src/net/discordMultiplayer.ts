@@ -1,9 +1,7 @@
+import { SYNC_SERVER_URL } from '../env.generated';
 import options from '../options';
 import type { Roulette } from '../roulette';
 import type { MapEntityState } from '../types/MapEntity.type';
-
-// Parcel이 빌드 시 .env 값으로 정적 치환한다 (DISCORD_CLIENT_ID와 동일한 방식).
-declare const process: { env: { SYNC_SERVER_URL?: string } };
 
 type MarbleSnapshot = { id: number; x: number; y: number; angle: number };
 type MarbleRosterEntry = { id: number; name: string; weight: number };
@@ -34,7 +32,7 @@ const SNAPSHOT_INTERVAL_MS = 50; // 초당 20회
  * 서버는 순전히 방 단위 중계기라 게임 로직을 전혀 모른다 (server/index.js 참고).
  */
 export function setupDiscordMultiplayer(roulette: Roulette, room: string): void {
-  const serverUrl = process.env.SYNC_SERVER_URL;
+  const serverUrl = SYNC_SERVER_URL;
   if (!serverUrl) {
     console.warn('[multiplayer] SYNC_SERVER_URL이 없어 동기화 없이 단독 실행합니다.');
     return;
