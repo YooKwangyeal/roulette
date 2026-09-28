@@ -2,7 +2,7 @@
 
 This is a lucky draw by dropping marbles.
 
-[Demo]( https://lazygyu.github.io/roulette )
+[Demo]( https://yookwangyeal.github.io/roulette )
 
 # Requirements
 
@@ -13,14 +13,14 @@ This is a lucky draw by dropping marbles.
 # Development
 
 ```shell
-> yarn
-> yarn dev
+> npm run
+> npm run dev
 ```
 
 # Build
 
 ```shell
-> yarn build
+> npm run build
 ```
 
 # License
