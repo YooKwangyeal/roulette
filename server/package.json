@@ -1,0 +1,13 @@
+{
+  "name": "marble-roulette-sync-relay",
+  "version": "1.0.0",
+  "private": true,
+  "description": "구슬 룰렛 Discord Activity용 실시간 좌표 중계 WebSocket 서버",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "dependencies": {
+    "ws": "^8.18.0"
+  }
+}

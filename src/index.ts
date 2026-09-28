@@ -1,12 +1,14 @@
 import './localization';
 import { AdService } from './adService';
-import { initDiscordSdkIfEmbedded, isInsideDiscord } from './discordSdk';
+import { getDiscordInstanceId, initDiscordSdkIfEmbedded, isInsideDiscord } from './discordSdk';
+import { setupDiscordMultiplayer } from './net/discordMultiplayer';
 import options from './options';
 import { Roulette } from './roulette';
 
 // Discord Activity 프레임 안이면 SDK와의 핸드셰이크부터 끝내야 로딩 화면이 사라진다.
 // 광고/분석은 어차피 디스코드 프록시 바깥 도메인이라 막히므로 아예 건너뛴다.
-void initDiscordSdkIfEmbedded();
+// 이 프라미스는 아래에서 실시간 동기화 방(instanceId)을 얻을 때 재사용한다.
+const discordReady = initDiscordSdkIfEmbedded();
 
 if (!isInsideDiscord()) {
   // 어떤 버전이 실제로 돌고 있는지 관측한다. 옛 서비스워커에 고착된 클라이언트는
@@ -31,7 +33,13 @@ const roulette = new Roulette();
 (window as any).roulette = roulette;
 (window as any).options = options;
 
-if (!isInsideDiscord()) {
+if (isInsideDiscord()) {
+  discordReady.then((sdk) => {
+    if (!sdk) return;
+    const room = getDiscordInstanceId();
+    if (room) setupDiscordMultiplayer(roulette, room);
+  });
+} else {
   const isLocalhost = ['localhost', '127.0.0.1'].includes(location.hostname);
   const adService = new AdService(isLocalhost ? 'http://localhost:3000' : 'https://marblerouletteshop.com');
 

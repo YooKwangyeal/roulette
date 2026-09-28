@@ -9,11 +9,13 @@ import { Minimap } from './minimap';
 import options, { type WinnerRange } from './options';
 import { ParticleManager } from './particleManager';
 import { Box2dPhysics } from './physics-box2d';
+import { NetworkPhysics } from './physics-network';
 import { RankRenderer } from './rankRenderer';
 import { type AdHit, RouletteRenderer } from './rouletteRenderer';
 import { SkillEffect } from './skillEffect';
 import type { RoundAd } from './types/Ad.type';
 import type { ColorTheme } from './types/ColorTheme';
+import type { MapEntityState } from './types/MapEntity.type';
 import type { MouseEventHandlerName, MouseEventName } from './types/mouseEvents.type';
 import type { UIObject } from './UIObject';
 import { bound } from './utils/bound.decorator';
@@ -77,6 +79,10 @@ export class Roulette extends EventTarget {
 
   protected createFastForwader(): FastForwader {
     return new FastForwader();
+  }
+
+  protected createPhysics(): IPhysics {
+    return new Box2dPhysics();
   }
 
   constructor() {
@@ -257,7 +263,7 @@ export class Roulette extends EventTarget {
   private async _init() {
     this._recorder = new VideoRecorder(this._renderer.canvas);
 
-    this.physics = new Box2dPhysics();
+    this.physics = this.createPhysics();
     await this.physics.init();
 
     this.addUiObject(new RankRenderer());
@@ -535,6 +541,69 @@ export class Roulette extends EventTarget {
         title: stage.title,
       };
     });
+  }
+
+  // ---- 실시간 동기화(멀티플레이) ----
+  // 호스트 쪽에서 매 프레임 밖으로 내보낼 스냅샷과, 뷰어 쪽에서 그걸 받아 그대로
+  // 재생하는 진입점. 프로토콜/전송 자체는 src/net/discordMultiplayer.ts가 맡고,
+  // 여기서는 Roulette 내부 상태를 읽고 쓰는 최소한의 통로만 연다.
+
+  /** 호스트가 매 프레임 밖으로 내보낼 구슬 위치 + 맵 지오메트리 */
+  public getSnapshot(): {
+    marbles: { id: number; x: number; y: number; angle: number }[];
+    entities: MapEntityState[];
+  } {
+    return {
+      marbles: this._marbles.map((m) => ({ id: m.id, x: m.x, y: m.y, angle: m.angle })),
+      entities: this.physics.getEntities(),
+    };
+  }
+
+  /** 호스트가 Start를 누른 시점의 구슬 구성(셔플까지 끝난 상태). 뷰어에게 그대로 전달해
+   *  동일한 id ↔ 이름 매핑을 재현하는 데 쓴다 (뷰어 쪽은 자체적으로 셔플하지 않는다) */
+  public getMarbleRoster(): { id: number; name: string; weight: number }[] {
+    return this._marbles.map((m) => ({ id: m.id, name: m.name, weight: m.weight }));
+  }
+
+  /** 뷰어 전용: 이후 physics를 네트워크 스냅샷 재생용으로 바꾼다. 되돌릴 일이 없어 1회성이다 */
+  public switchToNetworkPlayback(): NetworkPhysics {
+    const net = new NetworkPhysics();
+    this.physics = net;
+    return net;
+  }
+
+  /** 뷰어 전용: 남이 이미 시작한 라운드를 그대로 재현한다. 로컬에서는 물리를 계산하지
+   *  않고 applyNetworkSnapshot()으로 들어오는 좌표만 반영한다 */
+  public startFromNetwork(
+    mapIndex: number,
+    roster: { id: number; name: string; weight: number }[],
+    winnerRange: WinnerRange
+  ) {
+    if (!(this.physics instanceof NetworkPhysics)) {
+      this.switchToNetworkPlayback();
+    }
+
+    this.clearMarbles();
+    this._clearMap();
+    this._stage = stages[mapIndex] ?? stages[0];
+    this._loadMap();
+
+    this._marbles = roster.map(({ id, name, weight }) => new Marble(this.physics, id, roster.length, name, weight));
+    this._marbles.forEach((m) => (m.isActive = true));
+
+    this._winnerRange = clipWinnerRange(winnerRange, this._marbles.length);
+    this._isRunning = true;
+    this._camera.startFollowingMarbles();
+  }
+
+  /** 뷰어 전용: 매 스냅샷 메시지가 올 때마다 호출 */
+  public applyNetworkSnapshot(snapshot: {
+    marbles: { id: number; x: number; y: number; angle: number }[];
+    entities: MapEntityState[];
+  }) {
+    if (this.physics instanceof NetworkPhysics) {
+      this.physics.applySnapshot(snapshot.marbles, snapshot.entities);
+    }
   }
 
   public getCurrentMap() {
