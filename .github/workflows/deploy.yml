@@ -29,6 +29,9 @@ jobs:
           yarn
           npx update-browserslist-db@latest
           yarn build
+          yarn build:discord
+          mkdir -p dist/discord
+          cp -r dist-discord/. dist/discord/
       - name: deploy
         uses: peaceiris/actions-gh-pages@v4
         with:

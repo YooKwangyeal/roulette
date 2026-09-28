@@ -2,6 +2,7 @@
 node_modules
 .parcel-cache
 dist
+dist-discord
 yarn-error.log
 dist-custom
 dist-preview
